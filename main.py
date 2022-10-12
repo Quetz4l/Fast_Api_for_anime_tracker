@@ -1,8 +1,10 @@
-import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import anime
-import users
+from pydantic import BaseModel
+import uvicorn
+
+
+from sql import anime, users, playlist
 
 app = FastAPI()
 
@@ -11,12 +13,21 @@ origins = [
 ]
 
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
 )
+
+
+class Anime(BaseModel):
+    user_uuid: str
+    source: str
+    external_anime_id: int
+
+class User_uuid(BaseModel):
+    user_uuid: str
 
 
 
@@ -24,23 +35,24 @@ app.add_middleware(
 def read_root():
     return {"Hello": "World"}
 
-@app.get("/anime")
-def get_my_anime():
-    return anime.get_my_anime()
 
-@app.post("/anime")
-def add_anime(new_anime: anime.Anime):
-    return anime.add_new_anime(new_anime)
+@app.post("/add")
+def add_anime(data: Anime):
+    return anime.add_new_anime_to_playlist(data.user_uuid, data. source, data.external_anime_id)
 
 
-@app.post("/inc/{anime_id}")
-def increase(anime_id):
-    return anime.increaseWatch(anime_id)
+@app.post("/playlist")
+def get_playlist(data: User_uuid):
+    if data.user_uuid == '':
+        sql_user = users.add_new_user()
+        return {'user_uuid': sql_user.user_uuid, 'playlist': []}
+    else:
+        return  {'playlist': playlist.post_user_playlist(data.user_uuid)}
 
 
-@app.post("/dec/{anime_id}")
-def decrease(anime_id):
-    return anime.decreaseWatch(anime_id)
+@app.post("/episode/{count}")
+def change_episode(data: Anime, count:str):
+    return anime.change_watched_episode(data.user_uuid, data.external_anime_id, count)
 
 
 if __name__ == '__main__':
